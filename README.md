@@ -80,6 +80,14 @@ lib_deps =
 
 > 💡 **Lưu ý**: Nếu dùng **Seeed Studio XIAO ESP32S3 Sense** hoặc **ESP32-S3-EYE**, hãy mở file [`include/camera_pins.h`](include/camera_pins.h) và bật định nghĩa `#define` tương ứng.
 
+### Sơ đồ chân thẻ nhớ MicroSD (SD_MMC 1-Bit Mode)
+
+| Tín hiệu SD | Chân GPIO ESP32-S3 | Ghi chú |
+| :--- | :---: | :--- |
+| **CLK** | `GPIO 39` | Clock |
+| **CMD** | `GPIO 38` | Command |
+| **D0 (DAT0)** | `GPIO 40` | Data Line 0 |
+
 ---
 
 ## 4. Cấu trúc thư mục
@@ -90,7 +98,7 @@ robot_xiaozhi/
 │   ├── camera_pins.h       # Cấu hình định nghĩa chân camera
 │   └── README
 ├── src/
-│   └── main.cpp            # Mã nguồn kiểm tra PSRAM, khởi tạo camera & test chụp ảnh
+│   └── main.cpp            # Mã nguồn khởi tạo PSRAM, camera, mount MicroSD & tự động lưu ảnh chụp
 ├── platformio.ini          # Cấu hình PlatformIO cho ESP32-S3-CAM
 ├── .gitignore              # Loại trừ build artifacts (.pio, vscode db...)
 └── README.md               # Tài liệu hướng dẫn dự án
