@@ -1,0 +1,35 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "PlatformIO Build",
+      "type": "shell",
+      "command": "C:\\Users\\nnam3\\.platformio\\penv\\Scripts\\platformio.exe",
+      "args": ["run", "-e", "esp32-s3-cam"],
+      "options": {
+        "cwd": "D:\\robot_xiaozhi"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "PlatformIO Upload",
+      "type": "shell",
+      "command": "C:\\Users\\nnam3\\.platformio\\penv\\Scripts\\platformio.exe",
+      "args": ["run", "-t", "upload", "-e", "esp32-s3-cam"],
+      "options": {
+        "cwd": "D:\\robot_xiaozhi"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "PlatformIO Monitor",
+      "type": "shell",
+      "command": "C:\\Users\\nnam3\\.platformio\\penv\\Scripts\\platformio.exe",
+      "args": ["device", "monitor", "-e", "esp32-s3-cam"],
+      "options": {
+        "cwd": "D:\\robot_xiaozhi"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

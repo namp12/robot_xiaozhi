@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <esp_err.h>
 #include "esp_camera.h"
 #include "camera_pins.h"
 
@@ -45,7 +46,7 @@ bool initCamera() {
     // Khởi tạo camera
     esp_err_t err = esp_camera_init(&config);
     if (err != ESP_OK) {
-        Serial.printf("[CAM] Khoi tao camera that bai! Ma loi: 0x%x\n", err);
+        Serial.printf("[CAM] Khoi tao camera that bai! Ma loi: 0x%x (%s)\n", err, esp_err_to_name(err));
         return false;
     }
 
@@ -98,7 +99,7 @@ void loop() {
         Serial.println("[CAM] Dang chup thu 1 frame...");
         camera_fb_t *fb = esp_camera_fb_get();
         if (!fb) {
-            Serial.println("[CAM] Chup anh that bai!");
+            Serial.println("[CAM] Chup anh that bai! Khong nhan duoc frame tu camera.");
             return;
         }
 
