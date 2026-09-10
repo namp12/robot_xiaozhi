@@ -5,76 +5,56 @@
 #include "esp_camera.h"
 #include "camera_pins.h"
 
-// Cấu hình chân MicroSD (Chuẩn SD_MMC 1-bit cho board ESP32-S3 Freenove / Generic)
+// ================================================================
+// CẤU HÌNH PHẦN CỨNG
+// ================================================================
+#define SERIAL_BAUD_RATE 2000000  // 2Mbaud truyền video thời gian thực siêu mượt
+
+// Chân MicroSD (SD_MMC 1-bit mode) cho mạch ESP32-S3 Freenove / Generic
 #define SD_MMC_CLK 39
 #define SD_MMC_CMD 38
 #define SD_MMC_D0  40
 
+// Magic header và footer định danh gói tin video qua Serial
+const uint8_t FRAME_MAGIC_HEADER[4] = {0xAA, 0x55, 0xAA, 0x55};
+const uint8_t FRAME_MAGIC_FOOTER[2] = {0x55, 0xAA};
+
 bool sdCardReady = false;
 int photoCounter = 0;
+bool saveToSdRequested = false;
 
-// Hàm cấu hình và khởi tạo thẻ nhớ MicroSD
+// ================================================================
+// KHỞI TẠO THẺ NHỚ
+// ================================================================
 bool initSDCard() {
-    Serial.println("[SD] Dang khoi tao the nho MicroSD...");
     SD_MMC.setPins(SD_MMC_CLK, SD_MMC_CMD, SD_MMC_D0);
-
-    // Bắt đầu chế độ 1-bit (true)
     if (!SD_MMC.begin("/sdcard", true)) {
-        Serial.println("[SD] Khoi tao the nho that bai! (Kiem tra lai: da cam the chua, the dinh dang FAT32/exFAT chua)");
         return false;
     }
-
     uint8_t cardType = SD_MMC.cardType();
-    if (cardType == CARD_NONE) {
-        Serial.println("[SD] Khong tim thay the nho!");
-        return false;
-    }
-
-    String typeStr = "Unknown";
-    if (cardType == CARD_MMC) typeStr = "MMC";
-    else if (cardType == CARD_SD) typeStr = "SDSC";
-    else if (cardType == CARD_SDHC) typeStr = "SDHC/SDXC";
-
-    uint64_t totalBytes = SD_MMC.totalBytes() / (1024 * 1024);
-    uint64_t usedBytes = SD_MMC.usedBytes() / (1024 * 1024);
-
-    Serial.printf("[SD] The nho hop le! Loai: %s | Dung luong: %llu MB | Da dung: %llu MB\n", 
-                  typeStr.c_str(), totalBytes, usedBytes);
-    return true;
+    return (cardType != CARD_NONE);
 }
 
-// Hàm lưu buffer ảnh vào file JPEG trên thẻ nhớ
+// Lưu ảnh vào thẻ nhớ SD
 bool savePhotoToSD(camera_fb_t *fb) {
-    if (!sdCardReady) {
-        Serial.println("[SD] Canh bao: Khong the luu anh vi the nho chua san sang.");
-        return false;
-    }
+    if (!sdCardReady) return false;
 
     photoCounter++;
     char filename[32];
     snprintf(filename, sizeof(filename), "/photo_%04d.jpg", photoCounter);
 
-    Serial.printf("[SD] Dang ghi anh vao file %s (%u bytes)...\n", filename, (unsigned int)fb->len);
-
     File file = SD_MMC.open(filename, FILE_WRITE);
-    if (!file) {
-        Serial.printf("[SD] Loi: Khong the mo file %s de ghi!\n", filename);
-        return false;
-    }
+    if (!file) return false;
 
     size_t written = file.write(fb->buf, fb->len);
     file.close();
 
-    if (written == fb->len) {
-        Serial.printf("[SD] >>> DA LUU ANH THANH CONG: %s <<<\n", filename);
-        return true;
-    } else {
-        Serial.printf("[SD] Ghi anh loi: Chi ghi duoc %u / %u bytes!\n", (unsigned int)written, (unsigned int)fb->len);
-        return false;
-    }
+    return (written == fb->len);
 }
 
-// Hàm cấu hình và khởi tạo Camera
+// ================================================================
+// KHỞI TẠO CAMERA
+// ================================================================
 bool initCamera() {
     camera_config_t config;
     config.ledc_channel = LEDC_CHANNEL_0;
@@ -96,101 +76,86 @@ bool initCamera() {
     config.pin_pwdn = PWDN_GPIO_NUM;
     config.pin_reset = RESET_GPIO_NUM;
     config.xclk_freq_hz = 20000000;
-    config.pixel_format = PIXFORMAT_JPEG; // Dùng JPEG cho truyền tải ảnh / streaming / AI
-    config.grab_mode = CAMERA_GRAB_WHEN_EMPTY;
+    config.pixel_format = PIXFORMAT_JPEG;
+    config.grab_mode = CAMERA_GRAB_LATEST; // Luôn lấy frame mới nhất cho video mượt mà
     config.fb_location = CAMERA_FB_IN_PSRAM;
 
-    // Cấu hình chất lượng hình ảnh dựa vào PSRAM
     if (psramFound()) {
-        Serial.println("[CAM] PSRAM tim thay: Bat do phan giai cao (SVGA)");
-        config.frame_size = FRAMESIZE_SVGA; // 800x600
-        config.jpeg_quality = 12;            // 10-63 (số càng nhỏ chất lượng càng đẹp)
-        config.fb_count = 2;                // 2 frame buffer để xử lý mượt mà
+        // VGA 640x480 tối ưu độ nét và tốc độ truyền video qua Serial
+        config.frame_size = FRAMESIZE_VGA;
+        config.jpeg_quality = 12; // 10-63
+        config.fb_count = 2;      // Double buffering
     } else {
-        Serial.println("[CAM] CANH BAO: Khong tim thay PSRAM! Giam do phan giai xuong QVGA");
         config.frame_size = FRAMESIZE_QVGA; // 320x240
         config.jpeg_quality = 15;
         config.fb_count = 1;
         config.fb_location = CAMERA_FB_IN_DRAM;
     }
 
-    // Khởi tạo camera
     esp_err_t err = esp_camera_init(&config);
-    if (err != ESP_OK) {
-        Serial.printf("[CAM] Khoi tao camera that bai! Ma loi: 0x%x (%s)\n", err, esp_err_to_name(err));
-        return false;
-    }
-
-    sensor_t *s = esp_camera_sensor_get();
-    if (s != nullptr) {
-        // Tùy chỉnh lật ảnh nếu camera bị ngược
-        // s->set_vflip(s, 1);
-        // s->set_hmirror(s, 1);
-    }
-
-    Serial.println("[CAM] Khoi tao Camera thanh cong!");
-    return true;
+    return (err == ESP_OK);
 }
 
+// ================================================================
+// SETUP
+// ================================================================
 void setup() {
-    Serial.begin(115200);
-    // Chờ cổng USB Serial sẵn sàng
-    delay(2000);
+    Serial.begin(SERIAL_BAUD_RATE);
+    Serial.setRxBufferSize(256);
+    delay(1000);
 
-    Serial.println("\n=============================================");
-    Serial.println("   ESP32-S3-CAM + SD CARD (Robot Xiaozhi)    ");
-    Serial.println("=============================================");
-
-    // Kiểm tra thông tin bộ nhớ
-    Serial.printf("Chip Model: %s (Rev %d)\n", ESP.getChipModel(), ESP.getChipRevision());
-    Serial.printf("Flash Size: %d MB\n", ESP.getFlashChipSize() / (1024 * 1024));
-    Serial.printf("Free Heap : %d KB\n", ESP.getFreeHeap() / 1024);
-
-    if (psramFound()) {
-        Serial.printf("PSRAM Size: %d MB\n", ESP.getPsramSize() / (1024 * 1024));
-        Serial.printf("Free PSRAM: %d KB\n", ESP.getFreePsram() / 1024);
-    } else {
-        Serial.println("PSRAM: KHONG TIM THAY (Kiem tra lai cau hinh platformio.ini)");
-    }
-    Serial.println("---------------------------------------------");
-
-    // 1. Khởi tạo Camera
-    if (!initCamera()) {
-        Serial.println("[ERROR] Vui long kiem tra lai chan cam va module Camera!");
-    }
-
-    // 2. Khởi tạo thẻ nhớ MicroSD
+    // Khởi tạo thẻ nhớ (nếu cắm)
     sdCardReady = initSDCard();
-    if (!sdCardReady) {
-        Serial.println("[ERROR] Khong the luu anh vao the nho! Vui long kiem tra lai the nho.");
-    }
+
+    // Khởi tạo camera
+    initCamera();
 }
 
+// ================================================================
+// LOOP: STREAM VIDEO LIÊN TỤC
+// ================================================================
 void loop() {
-    static unsigned long lastCaptureTime = 0;
+    // 1. Kiểm tra lệnh điều khiển gửi từ máy tính qua Serial
+    while (Serial.available() > 0) {
+        char cmd = (char)Serial.read();
+        sensor_t *s = esp_camera_sensor_get();
 
-    // Chụp và lưu ảnh mỗi 5 giây
-    if (millis() - lastCaptureTime > 5000) {
-        lastCaptureTime = millis();
-
-        Serial.println("\n[CAM] Dang chup 1 frame...");
-        camera_fb_t *fb = esp_camera_fb_get();
-        if (!fb) {
-            Serial.println("[CAM] Chup anh that bai! Khong nhan duoc frame tu camera.");
-            return;
+        if (cmd == 'c' || cmd == 's') {
+            // Yêu cầu chụp và lưu ảnh vào thẻ nhớ SD
+            saveToSdRequested = true;
+        } else if (cmd == '1' && s != nullptr) {
+            s->set_framesize(s, FRAMESIZE_QVGA); // 320x240 (FPS cao)
+        } else if (cmd == '2' && s != nullptr) {
+            s->set_framesize(s, FRAMESIZE_VGA);  // 640x480 (Cân bằng đẹp)
+        } else if (cmd == '3' && s != nullptr) {
+            s->set_framesize(s, FRAMESIZE_SVGA); // 800x600 (Độ nét cao)
         }
-
-        Serial.printf("[CAM] Chup thanh cong! Kich thuoc anh: %u bytes (%dx%d, format: %d)\n", 
-                      (unsigned int)fb->len, fb->width, fb->height, fb->format);
-
-        // Lưu ảnh vào thẻ nhớ
-        if (sdCardReady) {
-            savePhotoToSD(fb);
-        } else {
-            Serial.println("[SD] The nho chua san sang -> Bo qua luu anh.");
-        }
-
-        // Trả lại buffer bộ nhớ cho camera (BẮT BUỘC để tránh tràn RAM)
-        esp_camera_fb_return(fb);
     }
+
+    // 2. Chụp khung hình từ camera
+    camera_fb_t *fb = esp_camera_fb_get();
+    if (!fb) {
+        delay(10);
+        return;
+    }
+
+    // 3. Đóng gói và truyền frame qua Serial:
+    // [MAGIC HEADER 4B] + [LENGTH 4B] + [JPEG DATA] + [MAGIC FOOTER 2B]
+    Serial.write(FRAME_MAGIC_HEADER, 4);
+
+    uint32_t len = fb->len;
+    Serial.write((const uint8_t*)&len, 4);
+
+    Serial.write(fb->buf, fb->len);
+
+    Serial.write(FRAME_MAGIC_FOOTER, 2);
+
+    // 4. Nếu có yêu cầu lưu thẻ nhớ
+    if (saveToSdRequested) {
+        savePhotoToSD(fb);
+        saveToSdRequested = false;
+    }
+
+    // 5. Giải phóng buffer
+    esp_camera_fb_return(fb);
 }

@@ -56,6 +56,20 @@
         "cwd": "${workspaceFolder}"
       },
       "problemMatcher": []
+    },
+    {
+      "label": "Robot Xiaozhi: Live Video Viewer",
+      "type": "shell",
+      "command": "python",
+      "args": ["viewer.py"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
     }
   ]
 }

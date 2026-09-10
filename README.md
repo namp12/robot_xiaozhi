@@ -98,8 +98,10 @@ robot_xiaozhi/
 │   ├── camera_pins.h       # Cấu hình định nghĩa chân camera
 │   └── README
 ├── src/
-│   └── main.cpp            # Mã nguồn khởi tạo PSRAM, camera, mount MicroSD & tự động lưu ảnh chụp
+│   └── main.cpp            # Mã nguồn stream video tốc độ cao qua USB Serial & lưu thẻ MicroSD
 ├── platformio.ini          # Cấu hình PlatformIO cho ESP32-S3-CAM
+├── viewer.py               # Ứng dụng xem video trực tiếp bằng OpenCV trên máy tính
+├── run_viewer.bat          # File click mở nhanh Live Video Viewer
 ├── .gitignore              # Loại trừ build artifacts (.pio, vscode db...)
 └── README.md               # Tài liệu hướng dẫn dự án
 ```
@@ -111,13 +113,24 @@ robot_xiaozhi/
 ### 5.1. Yêu cầu môi trường
 - Cài đặt **[Visual Studio Code](https://code.visualstudio.com/)**.
 - Cài đặt Extension **[PlatformIO IDE](https://marketplace.visualstudio.com/items?itemName=platformio.platformio-ide)** trên VS Code.
+- Python 3 với các thư viện: `pip install opencv-python numpy pyserial`.
 
 ### 5.2. Các bước thực hiện
 1. **Mở dự án**: Mở thư mục `robot_xiaozhi` trong VS Code.
 2. **Cắm mạch**: Kết nối ESP32-S3-CAM với máy tính qua cổng Type-C.
-3. **Biên dịch (Build)**: Nhấn biểu tượng dấu tick `✓` ở thanh dưới cùng hoặc nhấn phím tắt `Ctrl + Alt + B`.
-4. **Nạp Firmware (Upload)**: Nhấn biểu tượng mũi tên `→` hoặc nhấn `Ctrl + Alt + U`.
-5. **Xem Log (Serial Monitor)**: Nhấn biểu tượng phích cắm hoặc nhấn `Ctrl + Alt + S` (Baudrate: `115200`).
+3. **Biên dịch (Build)**: Nhấn `Ctrl + Shift + B`.
+4. **Nạp Firmware (Upload)**: Chạy task `PlatformIO: Upload`.
+5. **Mở Live Video Viewer**:
+   - **Cách 1**: Nhấp đúp vào file [`run_viewer.bat`](run_viewer.bat).
+   - **Cách 2**: Chạy lệnh trong terminal:
+     ```bash
+     python viewer.py
+     ```
+   - **Phím tắt trong cửa sổ Video**:
+     - `S`: Chụp ảnh lưu về thư mục `captures/` trên máy tính.
+     - `C`: Gửi lệnh cho ESP32 chụp và lưu ảnh vào thẻ nhớ MicroSD.
+     - `1` / `2` / `3`: Đổi nhanh độ phân giải (QVGA / VGA / SVGA).
+     - `Q` hoặc `ESC`: Thoát viewer.
 
 ---
 
