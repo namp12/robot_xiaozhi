@@ -1,7 +1,8 @@
 # 🤖 Robot Xiaozhi (小智) - Firmware ESP32-S3 (Modular & Event Bus Architecture)
 
-> Firmware chuẩn hóa dành cho **Robot AI Xiaozhi** và mẫu thiết kế **DB-Robot Mini OLED Camera** trên nền tảng vi điều khiển **ESP32-S3**.  
-> Được xây dựng theo **Kiến trúc Module hóa (Modular Architecture)** kết hợp với **Hàng đợi sự kiện thời gian thực (FreeRTOS Event Bus)**, giúp bạn dễ dàng tự chọn linh kiện, lắp ghép mở rộng từng phần mà không sợ xung đột hay treo camera.
+> 👤 **Tác giả / Bản quyền**: **Phương Nam (`phuongnam`)**  
+> ⚠️ **Bản quyền sở hữu trí tuệ**: Toàn bộ kiến trúc và mã nguồn dự án thuộc quyền sở hữu độc quyền của **Phương Nam (`phuongnam`)**.  
+> 🔒 **Mọi hành vi sao chép, trích xuất, chỉnh sửa hoặc sử dụng dự án cho mục đích cá nhân hoặc thương mại BẮT BUỘC PHẢI XIN PHÉP VÀ ĐƯỢC SỰ ĐỒNG Ý CỦA TÁC GIẢ.**
 
 ---
 
@@ -276,5 +277,12 @@ Kiến trúc này đã sẵn sàng để bạn tích hợp luồng đàm thoại
 
 ---
 
-## 📄 Giấy phép mã nguồn (License)
-Dự án được phát hành theo giấy phép mã nguồn mở **MIT License**. Bạn có thể tự do chỉnh sửa, phát triển thương mại hoặc chia sẻ trong cộng đồng DIY Robot AI.
+## 📄 Bản quyền & Điều khoản sử dụng (Copyright & License)
+
+**© 2026 Bản quyền thuộc về Phương Nam (`phuongnam`). Tất cả các quyền được bảo lưu (All Rights Reserved).**
+
+* **Tác giả / Sở hữu trí tuệ**: **Phương Nam (`phuongnam`)**
+* **Điều kiện sử dụng**:
+  * Toàn bộ mã nguồn, cấu trúc firmware, tài liệu thiết kế và các module trong dự án này là tài sản trí tuệ độc quyền của tác giả.
+  * **NGHIÊM CẤM** mọi hành vi sao chép, trích xuất, phân phối lại, sửa đổi hoặc sử dụng cho mục đích cá nhân, học tập hoặc thương mại dưới mọi hình thức khi **CHƯA CÓ SỰ ĐỒNG Ý VÀ CHO PHÉP CHÍNH THỨC TỪ TÁC GIẢ**.
+  * Mọi nhu cầu liên hệ hợp tác, tham khảo hoặc xin cấp quyền sử dụng dự án, vui lòng liên hệ trực tiếp với tác giả **Phương Nam (`phuongnam`)**.

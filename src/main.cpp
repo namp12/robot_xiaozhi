@@ -1,3 +1,11 @@
+/**
+ * @file main.cpp
+ * @brief Robot Xiaozhi - ESP32-S3 Modular Firmware
+ * @author Phuong Nam (phuongnam)
+ * @copyright (c) 2026 Phuong Nam. All rights reserved.
+ * @note Bản quyền thuộc về Phương Nam (phuongnam). Nghiêm cấm sao chép, sử dụng khi chưa được phép.
+ */
+
 #include <Arduino.h>
 #include "app_config.h"
 
