@@ -1,15 +1,12 @@
-#include "modules/camera_module.h"
-
-#if ENABLE_MODULE_CAMERA
-
+#include "CameraService.h"
+#include "app_config.h"
+#include "camera_pins.h"
+#include <EventBus.h>
 #include <esp_camera.h>
 #include <esp_err.h>
 #include <FS.h>
 #include <SD_MMC.h>
-#include "camera_pins.h"
-#include "event_bus.h"
 
-// Magic header và footer định danh gói tin video qua Serial
 static const uint8_t FRAME_MAGIC_HEADER[4] = {0xAA, 0x55, 0xAA, 0x55};
 static const uint8_t FRAME_MAGIC_FOOTER[2] = {0x55, 0xAA};
 
@@ -24,8 +21,7 @@ static bool init_sd_card() {
     if (!SD_MMC.begin("/sdcard", true)) {
         return false;
     }
-    uint8_t cardType = SD_MMC.cardType();
-    return (cardType != CARD_NONE);
+    return (SD_MMC.cardType() != CARD_NONE);
 }
 
 static bool save_photo_to_sd(camera_fb_t *fb) {
@@ -40,12 +36,11 @@ static bool save_photo_to_sd(camera_fb_t *fb) {
 
     size_t written = file.write(fb->buf, fb->len);
     file.close();
-
     return (written == fb->len);
 }
 #endif
 
-bool camera_module_init() {
+bool CameraService::init() {
 #if ENABLE_MODULE_SD_CARD
     s_sd_card_ready = init_sd_card();
 #endif
@@ -75,33 +70,30 @@ bool camera_module_init() {
     config.fb_location = CAMERA_FB_IN_PSRAM;
 
     if (psramFound()) {
-        config.frame_size = FRAMESIZE_VGA;   // 640x480
+        config.frame_size = FRAMESIZE_VGA;
         config.jpeg_quality = 12;
-        config.fb_count = 2;                 // Double buffering
+        config.fb_count = 2;
     } else {
-        config.frame_size = FRAMESIZE_QVGA;  // 320x240
+        config.frame_size = FRAMESIZE_QVGA;
         config.jpeg_quality = 15;
         config.fb_count = 1;
         config.fb_location = CAMERA_FB_IN_DRAM;
     }
 
-    esp_err_t err = esp_camera_init(&config);
-    return (err == ESP_OK);
+    return (esp_camera_init(&config) == ESP_OK);
 }
 
-void camera_module_request_capture() {
+void CameraService::requestCapture() {
     s_capture_requested = true;
 }
 
 static void camera_task_worker(void *param) {
     while (true) {
-        // 1. Kiểm tra lệnh từ Serial (từ viewer.py trên PC)
         while (Serial.available() > 0) {
             char cmd = (char)Serial.read();
             sensor_t *s = esp_camera_sensor_get();
-
             if (cmd == 'c' || cmd == 's') {
-                event_bus_post_type(EVENT_CAMERA_CAPTURE_REQUEST);
+                EventBus::postType(EVENT_CAMERA_CAPTURE_REQUEST);
             } else if (cmd == '1' && s != nullptr) {
                 s->set_framesize(s, FRAMESIZE_QVGA);
             } else if (cmd == '2' && s != nullptr) {
@@ -111,21 +103,18 @@ static void camera_task_worker(void *param) {
             }
         }
 
-        // 2. Chụp khung hình từ camera
         camera_fb_t *fb = esp_camera_fb_get();
         if (!fb) {
             vTaskDelay(pdMS_TO_TICKS(10));
             continue;
         }
 
-        // 3. Truyền khung hình qua Serial cho máy tính
         Serial.write(FRAME_MAGIC_HEADER, 4);
         uint32_t len = fb->len;
         Serial.write((const uint8_t*)&len, 4);
         Serial.write(fb->buf, fb->len);
         Serial.write(FRAME_MAGIC_FOOTER, 2);
 
-        // 4. Nếu có yêu cầu chụp lưu thẻ nhớ
         if (s_capture_requested) {
 #if ENABLE_MODULE_SD_CARD
             save_photo_to_sd(fb);
@@ -133,25 +122,20 @@ static void camera_task_worker(void *param) {
             s_capture_requested = false;
         }
 
-        // 5. Trả lại buffer cho camera driver
         esp_camera_fb_return(fb);
-
-        // Giúp nhường CPU nhẹ nhàng cho các task khác trên cùng Core
         vTaskDelay(pdMS_TO_TICKS(1));
     }
 }
 
-bool camera_module_start_task() {
+bool CameraService::startTask(uint8_t core_id) {
     BaseType_t res = xTaskCreatePinnedToCore(
         camera_task_worker,
         "CameraTask",
         4096,
         nullptr,
-        2,                       // Priority 2
+        2,
         &s_camera_task_handle,
-        CORE_HEAVY_MULTIMEDIA    // Chạy trên Core 0
+        core_id
     );
     return (res == pdPASS);
 }
-
-#endif // ENABLE_MODULE_CAMERA
