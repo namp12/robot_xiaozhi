@@ -1,54 +1,63 @@
-# 🤖 Robot Xiaozhi - ESP32-S3 Firmware (Modular Architecture & Event Bus)
+# 🤖 Robot Xiaozhi (小智) - Firmware ESP32-S3 (Modular & Event Bus Architecture)
 
-Dự án firmware chuẩn hóa dành cho robot AI **Xiaozhi (小智)** và dòng **DB-Robot Mini (OLED + Camera ESP32-S3)**. Dự án được thiết kế theo **Kiến trúc Module hóa (Modular Architecture)** kết hợp với **Hàng đợi sự kiện thời gian thực (FreeRTOS Event Bus)** trên nền tảng vi điều khiển **ESP32-S3**.
-
-Kiến trúc này cho phép bạn dễ dàng tự do thay đổi, bật/tắt hoặc ghép nối các module linh kiện theo ý muốn mà không làm ảnh hưởng đến luồng xử lý của hệ thống hay làm đơ camera.
-
----
-
-## 📋 Mục lục
-- [1. Tính năng nổi bật](#1-tính-năng-nổi-bật)
-- [2. Kiến trúc hệ thống & Đa nhiệm FreeRTOS](#2-kiến-trúc-hệ-thống--đa-nhiệm-freertos)
-- [3. Sơ đồ mạch & Bảng chân GPIO](#3-sơ-đồ-mạch--bảng-chân-gpio)
-- [4. Cấu trúc thư mục dự án](#4-cấu-trúc-thư-mục-dự-án)
-- [5. Hướng dẫn cấu hình & Lắp ghép linh kiện](#5-hướng-dẫn-cấu-hình--lắp-ghép-linh-kiện)
-- [6. Hướng dẫn phát triển module mới](#6-hướng-dẫn-phát-triển-module-mới)
-- [7. Hướng dẫn cài đặt và nạp firmware](#7-hướng-dẫn-cài-đặt-và-nạp-firmware)
-- [8. Ứng dụng xem video trực tiếp (OpenCV Viewer)](#8-ứng-dụng-xem-video-trực-tiếp-opencv-viewer)
-- [9. Xử lý sự cố thường gặp (Troubleshooting)](#9-xử-lý-sự-cố-thường-gặp-troubleshooting)
+> Firmware chuẩn hóa dành cho **Robot AI Xiaozhi** và mẫu thiết kế **DB-Robot Mini OLED Camera** trên nền tảng vi điều khiển **ESP32-S3**.  
+> Được xây dựng theo **Kiến trúc Module hóa (Modular Architecture)** kết hợp với **Hàng đợi sự kiện thời gian thực (FreeRTOS Event Bus)**, giúp bạn dễ dàng tự chọn linh kiện, lắp ghép mở rộng từng phần mà không sợ xung đột hay treo camera.
 
 ---
 
-## 1. Tính năng nổi bật
-
-* 🧩 **Kiến trúc Component chuẩn PlatformIO (`lib/`)**: Tách biệt hoàn toàn mã nguồn của từng ngoại vi (`EventBus`, `CameraService`, `MotorDriver`, `DisplayService`, `AudioService`, `SensorService`, `SystemBrain`).
-* ⚡ **FreeRTOS Event Bus phi chặn (Non-blocking)**: Các module giao tiếp qua hàng đợi sự kiện (Pub/Sub pattern). Camera chụp ảnh, cảm biến quét vật cản hay xe chạy không bao giờ làm nghẽn lẫn nhau.
-* 🧠 **Tối ưu Dual-Core 240MHz**:
-  * **Core 0**: Chuyên trách truyền stream video Serial tốc độ cao (2Mbaud) và xử lý âm thanh/mạng nặng.
-  * **Core 1**: Não bộ điều phối (`SystemBrain`) ra quyết định tức thì khi có sự kiện từ cảm biến.
-* 🚀 **Tận dụng 8MB/16MB OPI PSRAM**: Cấp phát Frame Buffer độ phân giải VGA/SVGA trực tiếp trong PSRAM ngoài, giữ cho bộ nhớ RAM nội (SRAM) luôn trống trên 90%.
-* 🎛️ **Bật/Tắt module bằng 1 cú nhấp chuột**: Linh kiện nào có sẵn thì bật, chưa mua thì tắt trong `app_config.h` mà không phát sinh lỗi biên dịch.
+## 📋 Mục lục chi tiết
+1. [Giới thiệu tổng quan dự án](#1-giới-thiệu-tổng-quan-dự-án)
+2. [Nguyên lý kiến trúc: Dual-Core, OPI PSRAM & Event Bus](#2-nguyên-lý-kiến-trúc-dual-core-opi-psram--event-bus)
+3. [Sơ đồ khối phần cứng & Bảng chân kết nối GPIO](#3-sơ-đồ-khối-phần-cứng--bảng-chân-kết-nối-gpio)
+4. [Cấu trúc mã nguồn & Chi tiết các thư viện trong `lib/`](#4-cấu-trúc-mã-nguồn--chi-tiết-các-thư-viện-trong-lib)
+5. [Hướng dẫn cấu hình Bật/Tắt module (`include/app_config.h`)](#5-hướng-dẫn-cấu-hình-bậttắt-module-includeapp_configh)
+6. [Hướng dẫn cơ chế giao tiếp Event Bus (Cách thêm tính năng mới)](#6-hướng-dẫn-cơ-chế-giao-tiếp-event-bus-cách-thêm-tính-năng-mới)
+7. [Hướng dẫn cài đặt môi trường và Nạp Firmware](#7-hướng-dẫn-cài-đặt-môi-trường-và-nạp-firmware)
+8. [Hướng dẫn sử dụng Live Video Viewer trên máy tính](#8-hướng-dẫn-sử-dụng-live-video-viewer-trên-máy-tính)
+9. [Lộ trình tích hợp AI Cloud (Xiaozhi Server / OpenAI / Dify)](#9-lộ-trình-tích-hợp-ai-cloud-xiaozhi-server--openai--dify)
+10. [Bảng xử lý sự cố thường gặp (Troubleshooting)](#10-bảng-xử-lý-sự-cố-thường-gặp-troubleshooting)
 
 ---
 
-## 2. Kiến trúc hệ thống & Đa nhiệm FreeRTOS
+## 1. Giới thiệu tổng quan dự án
+
+**Robot Xiaozhi** là mô hình robot để bàn thông minh, kết hợp giữa:
+* **Thị giác máy tính (Computer Vision)**: Nhận diện khuôn mặt, vật thể, quét QR code và truyền video thời gian thực.
+* **Tương tác âm thanh (Voice AI)**: Thu âm giọng nói qua micro số I2S, truyền lên server AI (Xiaozhi / LLM) và phát âm thanh phản hồi qua loa.
+* **Cảm xúc & Biểu cảm**: Màn hình OLED hiển thị đôi mắt chớp nháy sống động biểu thị các trạng thái: vui, buồn, ngạc nhiên, suy nghĩ, tức giận.
+* **Di chuyển linh hoạt**: Hệ dẫn động 2 bánh vi sai sử dụng động cơ giảm tốc N20 mini và mạch cầu H, tích hợp cảm biến laser ToF chống va chạm và chống rơi bàn.
+
+Dự án này được tổ chức lại toàn bộ để bạn **có thể tự do mua sắm và lắp linh kiện theo ý muốn**. Bạn lắp đến đâu chỉ cần bật module đó trong cấu hình đến đó.
+
+---
+
+## 2. Nguyên lý kiến trúc: Dual-Core, OPI PSRAM & Event Bus
+
+### A. Phân bổ 2 Nhân CPU (Dual-Core Xtensa LX7 @ 240MHz)
+Thay vì nhồi nhét tất cả code vào một vòng lặp `loop()` gây nghẽn và giật khung hình, hệ thống chia việc cho 2 nhân xử lý độc lập:
+* **Core 0 (Multimedia & I/O nặng)**:
+  * Chạy **`CameraService Task`**: Lấy dữ liệu từ cảm biến ảnh (OV2640), nén JPEG và truyền gói tin tốc độ cao qua Serial USB (2.000.000 baud).
+  * Chạy **`AudioService Task`** (khi bật): Xử lý DMA truyền nhận luồng âm thanh I2S với micro và loa.
+* **Core 1 (Logic điều phối & Ngoại vi tương tác)**:
+  * Chạy **`SystemBrain Task`**: Tiếp nhận các sự kiện từ Event Bus, đưa ra quyết định (ví dụ: gặp vật cản thì phanh xe và đổi mắt OLED).
+  * Chạy điều khiển động cơ, quét nút cảm ứng chạm và cập nhật màn hình.
 
 ```mermaid
 flowchart TD
-    subgraph Core0 ["CORE 0 (Tác vụ thời gian thực nặng)"]
-        Cam["📸 CameraService<br/>(Lấy frame & Stream qua USB Serial 2Mbaud)"]
-        Audio["🎙️ AudioService<br/>(Mic INMP441 & Loa MAX98357A I2S DMA)"]
+    subgraph Core0 ["CORE 0 (Tác vụ thời gian thực & Truyền thông nặng)"]
+        Cam["📸 CameraService<br/>(Lấy frame & Stream Serial 2Mbaud)"]
+        Audio["🎙️ AudioService<br/>(Micro INMP441 & Loa MAX98357A DMA)"]
     end
 
     subgraph Bus ["📬 FreeRTOS Event Bus (lib/EventBus)"]
-        Queue["xQueue (SystemEvent Queue)<br/>Chuyển thông điệp an toàn giữa các Core"]
+        Queue["xQueue (Hàng đợi sự kiện trung tâm)<br/>Truyền thông điệp phi chặn giữa 2 Core"]
     end
 
-    subgraph Core1 ["CORE 1 (Điều phối & Logic ứng dụng)"]
-        Brain["🧠 SystemBrain<br/>(Bộ não tiếp nhận & phân phối sự kiện)"]
-        Motor["🚗 MotorDriver<br/>(Điều khiển bánh xe N20 qua cầu H)"]
-        Screen["👀 DisplayService<br/>(Vẽ biểu cảm mắt OLED/LCD)"]
-        Sensors["📡 SensorService<br/>(Đo khoảng cách ToF & Cảm ứng chạm)"]
+    subgraph Core1 ["CORE 1 (Logic điều khiển & Giao diện)"]
+        Brain["🧠 SystemBrain<br/>(Não bộ điều phối trung tâm)"]
+        Motor["🚗 MotorDriver<br/>(L298N Mini / Cầu H)"]
+        Screen["👀 DisplayService<br/>(Mắt biểu cảm OLED/LCD)"]
+        Sensors["📡 SensorService<br/>(Laser ToF & Chạm TTP223)"]
     end
 
     Cam -->|EVENT_CAMERA_FRAME_READY| Queue
@@ -57,163 +66,215 @@ flowchart TD
     Audio -->|EVENT_AUDIO_WAKEWORD_DETECTED| Queue
 
     Queue --> Brain
-    Brain -->|Lệnh dừng xe/chạy| Motor
-    Brain -->|Đổi biểu cảm vui/buồn/ngạc nhiên| Screen
-    Brain -->|Yêu cầu chụp lưu thẻ nhớ SD| Cam
+    Brain -->|Lệnh phanh xe / di chuyển| Motor
+    Brain -->|Lệnh đổi biểu cảm mắt| Screen
+    Brain -->|Lệnh chụp ảnh lưu SD| Cam
 ```
 
----
-
-## 3. Sơ đồ mạch & Bảng chân GPIO
-
-Sơ đồ chân được chuẩn hóa theo thiết kế mạch **DB-Robot Mini OLED Camera ESP32-S3** (bạn có thể tự do chỉnh lại trong `include/app_config.h`):
-
-| Tên Module | Chân trên Module | Chân GPIO ESP32-S3 | Chức năng |
-| :--- | :--- | :---: | :--- |
-| **I2C Bus chung** | SCL<br/>SDA | `GPIO 42`<br/>`GPIO 41` | Kết nối màn hình OLED (SSD1306) và Cảm biến khoảng cách laser (VL53L0X) |
-| **Động cơ 2 bánh (L298N Mini)** | IN1, IN2<br/>IN3, IN4 | `GPIO 2`, `GPIO 1`<br/>`GPIO 47`, `GPIO 48` | Bánh trái (N20 Left)<br/>Bánh phải (N20 Right) |
-| **Cảm biến chạm (TTP223)** | I/O | `GPIO 45` | Cảm ứng chạm trên đỉnh đầu robot để tương tác |
-| **Micro I2S (INMP441)** | SCK, WS, SD | `GPIO 43`, `GPIO 44`, `GPIO 1` | Thu âm giọng nói truyền tới AI |
-| **Loa I2S (MAX98357A)** | BCLK, LRC, DIN | `GPIO 19`, `GPIO 20`, `GPIO 21` | Khuếch đại âm thanh phát câu trả lời |
-| **Đèn LED trang trí** | WS2812 DIN<br/>LED Edison | `GPIO 38`<br/>`GPIO 47` | Hiệu ứng ánh sáng RGB bụng và dây tóc |
-| **Thẻ nhớ MicroSD (SD_MMC)** | CLK, CMD, D0 | `GPIO 39`, `GPIO 38`, `GPIO 40` | Lưu ảnh chụp trực tiếp từ camera |
-| **Camera OV2640 / OV5640** | D0 - D7, XCLK... | Theo chân socket FPC | Tự động cấu hình trong `camera_pins.h` |
+### B. Bộ nhớ mở rộng OPI PSRAM (Octal SPI)
+* Vi điều khiển ESP32-S3 tích hợp sẵn **8MB hoặc 16MB PSRAM** giao tiếp bus Octal 8-bit tốc độ cao.
+* Cấu hình trong `platformio.ini` (`board_build.arduino.memory_type = qio_opi` và `BOARD_HAS_PSRAM`) cho phép toàn bộ Frame Buffer của camera (độ phân giải VGA 640x480 hoặc SVGA 800x600) được lưu thẳng trên PSRAM.
+* Bộ nhớ RAM nội (SRAM 512KB) của chip luôn được giữ an toàn ở mức **trống trên 90%**, không bao giờ bị tràn bộ nhớ (`out of memory`).
 
 ---
 
-## 4. Cấu trúc thư mục dự án
+## 3. Sơ đồ khối phần cứng & Bảng chân kết nối GPIO
+
+Sơ đồ chân được chuẩn hóa theo mẫu **DB-Robot Mini OLED Camera ESP32-S3** (bạn có thể thay đổi tùy ý trong [`include/app_config.h`](include/app_config.h)):
+
+| Tên Khối Ngoại Vi | Module Thực Tế Khuyên Dùng | Chân Trên Module | Chân GPIO ESP32-S3 | Ghi Chú Kỹ Thuật |
+| :--- | :--- | :--- | :---: | :--- |
+| **Camera Mắt Nhìn** | OV2640 / OV5640 FPC | D0-D7, XCLK, PCLK... | Chân ngầm FPC | Đã khai báo chuẩn trong `include/camera_pins.h` |
+| **Bus I2C Chung** | Màn hình OLED & Laser ToF | SCL<br/>SDA | **GPIO 42**<br/>**GPIO 41** | Dùng chung 1 đường I2C (OLED địa chỉ `0x3C`, VL53L0X địa chỉ `0x29`) |
+| **Động Cơ Bánh Xe** | L298N Mini / DRV8833 + 2x N20 | IN1, IN2<br/>IN3, IN4 | **GPIO 2, GPIO 1**<br/>**GPIO 47, GPIO 48** | Điều khiển bánh trái (Motor A) và bánh phải (Motor B) |
+| **Cảm Biến Chạm** | TTP223 Mini | I/O | **GPIO 45** | Đặt dưới vỏ đầu robot, xoa đầu để đánh thức / gọi AI |
+| **Micro I2S** | INMP441 Omnidirectional | SCK, WS, SD | **GPIO 43, GPIO 44, GPIO 1** | Micro MEMS độ nhạy cao thu âm giọng nói |
+| **Loa I2S** | MAX98357A Amp + Loa 3W | BCLK, LRC, DIN | **GPIO 19, GPIO 20, GPIO 21** | Mạch giải mã DAC và khuếch đại âm thanh số I2S |
+| **Đèn LED Hiệu Ứng** | WS2812B RGB / LED Edison | DIN / Anode | **GPIO 38** / **GPIO 47** | Tạo hiệu ứng ánh sáng đổi màu theo cảm xúc |
+| **Thẻ Nhớ Lưu Ảnh** | MicroSD Slot (SD_MMC) | CLK, CMD, D0 | **GPIO 39, GPIO 38, GPIO 40** | Chế độ SD-MMC 1-bit tốc độ cao lưu ảnh chụp |
+| **Nguồn Điện** | Pin 14250 3.7V + Sạc V713 | 5V, GND | 5V, GND | Cần gắn tụ hóa (470uF - 1000uF) lọc sụt áp khi khởi động motor |
+
+---
+
+## 4. Cấu trúc mã nguồn & Chi tiết các thư viện trong `lib/`
+
+Dự án tuân thủ tiêu chuẩn **PlatformIO Component Library Architecture**, mã nguồn được chia thành các thư viện khép kín đặt trong thư mục `lib/`:
 
 ```text
 robot_xiaozhi/
-├── lib/                             # Thư mục thư viện độc lập (PlatformIO Components)
-│   ├── EventBus/                    # Thư viện Hàng đợi sự kiện FreeRTOS
-│   │   ├── EventBus.h
-│   │   └── EventBus.cpp
-│   ├── CameraService/               # Thư viện quản lý Camera & Stream Serial
+├── lib/                             # 📦 Thư mục thư viện thành phần độc lập
+│   ├── EventBus/                    # 📬 Hàng đợi sự kiện FreeRTOS toàn hệ thống
+│   │   ├── EventBus.h               # Định nghĩa các EventType và API Post/Receive
+│   │   └── EventBus.cpp             # Hiện thực hàng đợi xQueue phi chặn
+│   ├── CameraService/               # 📷 Quản lý Camera & Stream Serial 2Mbaud
 │   │   ├── CameraService.h
-│   │   └── CameraService.cpp
-│   ├── SystemBrain/                 # Não bộ điều phối trung tâm
+│   │   └── CameraService.cpp        # Chạy Task trên Core 0, gửi frame JPEG cho PC
+│   ├── SystemBrain/                 # 🧠 Não bộ điều phối trung tâm
 │   │   ├── SystemBrain.h
-│   │   └── SystemBrain.cpp
-│   ├── MotorDriver/                 # Driver điều khiển động cơ di chuyển
+│   │   └── SystemBrain.cpp          # Chạy Task trên Core 1, phân phối sự kiện
+│   ├── MotorDriver/                 # 🚗 Driver điều khiển bánh xe N20 (Tiến/Lùi/Rẽ/Dừng)
 │   │   ├── MotorDriver.h
 │   │   └── MotorDriver.cpp
-│   ├── DisplayService/              # Dịch vụ hiển thị biểu cảm mắt
+│   ├── DisplayService/              # 👀 Quản lý biểu cảm đôi mắt OLED / LCD
 │   │   ├── DisplayService.h
 │   │   └── DisplayService.cpp
-│   ├── AudioService/                # Dịch vụ âm thanh I2S Mic & Loa
+│   ├── AudioService/                # 🎙️ Dịch vụ âm thanh I2S thu Mic & phát Loa
 │   │   ├── AudioService.h
 │   │   └── AudioService.cpp
-│   └── SensorService/               # Dịch vụ cảm biến khoảng cách & chạm
+│   └── SensorService/               # 📡 Quản lý cảm biến khoảng cách VL53L0X & Chạm TTP223
 │       ├── SensorService.h
 │       └── SensorService.cpp
-├── include/                         # Header cấu hình dùng chung
-│   ├── app_config.h                 # Cấu hình Bật/Tắt module & Sơ đồ chân GPIO
-│   └── camera_pins.h                # Định nghĩa chân phần cứng camera ESP32-S3
+├── include/                         # ⚙️ Cấu hình toàn cục
+│   ├── app_config.h                 # Công tắc BẬT/TẮT module & Bảng phân bổ chân GPIO
+│   └── camera_pins.h                # Định nghĩa chân phần cứng cảm biến camera
 ├── src/
-│   └── main.cpp                     # File chính: Khởi động hệ thống & Heartbeat
-├── platformio.ini                   # File cấu hình PlatformIO (OPI PSRAM, cờ build)
-├── viewer.py                        # Ứng dụng xem Live Video trên máy tính (OpenCV)
-├── run_viewer.bat                   # Phím tắt mở nhanh ứng dụng xem video
+│   └── main.cpp                     # 🚀 File chính: Khởi động hệ thống & Giám sát RAM
+├── platformio.ini                   # File cấu hình PlatformIO (OPI PSRAM, Flash 8MB, Baudrate)
+├── viewer.py                        # Ứng dụng xem Live Video trên PC bằng OpenCV
+├── run_viewer.bat                   # File bấm đúp chuột mở nhanh Live Video Viewer
 └── README.md                        # Tài liệu hướng dẫn toàn diện
 ```
 
 ---
 
-## 5. Hướng dẫn cấu hình & Lắp ghép linh kiện
+## 5. Hướng dẫn cấu hình Bật/Tắt module (`include/app_config.h`)
 
-Mở file [`include/app_config.h`](include/app_config.h) để tùy biến:
+File [`include/app_config.h`](include/app_config.h) là nơi duy nhất bạn cần quan tâm khi lắp ráp phần cứng:
 
-### 1. Bật hoặc tắt module tùy theo tiến độ hàn linh kiện:
+### 1. Bật/Tắt module theo linh kiện bạn đang có sẵn:
 ```cpp
-#define ENABLE_MODULE_CAMERA    1   // 1 = Bật camera, 0 = Tắt
-#define ENABLE_MODULE_SD_CARD   1   // 1 = Bật thẻ nhớ, 0 = Tắt
-#define ENABLE_MODULE_BRAIN     1   // 1 = Bật não bộ điều phối EventBus
+// 1 = Bật module (Tự động tạo Task và xử lý)
+// 0 = Tắt module (Không chiếm chân, không tốn RAM)
 
-// Bật 1 khi bạn gắn thêm linh kiện:
-#define ENABLE_MODULE_DISPLAY   0   // Màn hình OLED / LCD
-#define ENABLE_MODULE_MOTOR     0   // Động cơ bánh xe
-#define ENABLE_MODULE_AUDIO     0   // Micro & Loa I2S
-#define ENABLE_MODULE_SENSOR    0   // Cảm biến khoảng cách & Chạm
+#define ENABLE_MODULE_CAMERA    1   // Bật camera (đang có sẵn trên mạch)
+#define ENABLE_MODULE_SD_CARD   1   // Bật thẻ nhớ lưu ảnh
+#define ENABLE_MODULE_BRAIN     1   // Bật não bộ điều phối EventBus
+
+// Các module bạn sẽ gắn thêm sau:
+#define ENABLE_MODULE_DISPLAY   0   // Đổi thành 1 khi bạn hàn màn hình OLED
+#define ENABLE_MODULE_MOTOR     0   // Đổi thành 1 khi bạn nối mạch cầu H motor
+#define ENABLE_MODULE_AUDIO     0   // Đổi thành 1 khi bạn hàn Mic & Loa I2S
+#define ENABLE_MODULE_SENSOR    0   // Đổi thành 1 khi bạn hàn cảm biến ToF / Chạm
 ```
 
-### 2. Thay đổi chân GPIO phù hợp với cách bạn đi dây:
+### 2. Tự do đổi chân GPIO theo cách bạn đi dây thực tế:
+Nếu cách hàn của bạn khác sơ đồ mẫu, chỉ cần sửa số chân trong file này:
 ```cpp
-#define PIN_I2C_SDA             41
-#define PIN_I2C_SCL             42
-#define PIN_MOTOR_LEFT_IN1      2
-#define PIN_MOTOR_LEFT_IN2      1
-...
+#define PIN_MOTOR_LEFT_IN1      2   // Chân IN1 cầu H
+#define PIN_MOTOR_LEFT_IN2      1   // Chân IN2 cầu H
+#define PIN_I2C_SDA             41  // Chân Data I2C
+#define PIN_I2C_SCL             42  // Chân Clock I2C
+#define PIN_TOUCH_SENSOR        45  // Chân tín hiệu nút chạm
 ```
 
 ---
 
-## 6. Hướng dẫn phát triển module mới
+## 6. Hướng dẫn cơ chế giao tiếp Event Bus (Cách thêm tính năng mới)
 
-Để thêm một tính năng hoặc phản ứng mới cho robot:
+Cơ chế Event Bus giúp bạn viết thêm chức năng mới cực kỳ đơn giản theo 3 bước:
 
-1. **Thêm Event mới** vào enum `EventType` trong [`lib/EventBus/EventBus.h`](lib/EventBus/EventBus.h):
-   ```cpp
-   enum EventType {
-       ...
-       EVENT_BATTERY_CHARGING,
-   };
-   ```
-2. **Gửi sự kiện từ bất kỳ đâu (Non-blocking)**:
-   ```cpp
-   EventBus::postType(EVENT_BATTERY_CHARGING);
-   ```
-3. **Xử lý sự kiện trong Não bộ** tại [`lib/SystemBrain/SystemBrain.cpp`](lib/SystemBrain/SystemBrain.cpp):
-   ```cpp
-   case EVENT_BATTERY_CHARGING:
-       DisplayService::setEmotion(EMOTION_HAPPY);
-       break;
-   ```
+### Bước 1: Khai báo Event mới
+Mở [`lib/EventBus/EventBus.h`](lib/EventBus/EventBus.h) và thêm sự kiện vào enum `EventType`:
+```cpp
+enum EventType {
+    ...
+    EVENT_BATTERY_LOW,        // Thêm sự kiện: Pin yếu
+    EVENT_ROBOT_PICKED_UP,    // Thêm sự kiện: Robot bị nhấc bổng khỏi bàn
+};
+```
+
+### Bước 2: Bắn sự kiện từ nơi phát hiện (Producer)
+Ở bất kỳ đâu (task cảm biến, ngắt GPIO...), bạn chỉ cần gọi 1 dòng:
+```cpp
+EventBus::postType(EVENT_ROBOT_PICKED_UP);
+
+// Hoặc gửi kèm dữ liệu (ví dụ khoảng cách cm):
+SystemEvent evt;
+evt.type = EVENT_DISTANCE_OBSTACLE;
+evt.param.i32 = 8; // cách vật cản 8cm
+EventBus::post(evt);
+```
+
+### Bước 3: Đón nhận và xử lý trong Não bộ (Consumer)
+Mở [`lib/SystemBrain/SystemBrain.cpp`](lib/SystemBrain/SystemBrain.cpp) và thêm khối `case`:
+```cpp
+case EVENT_ROBOT_PICKED_UP:
+    MotorDriver::stop();                         // Dừng động cơ ngay
+    DisplayService::setEmotion(EMOTION_ANGRY);   // Mắt tức giận vì bị nhấc lên
+    AudioService::playSound("put_me_down.mp3");  // Phát câu thoại qua loa
+    break;
+```
 
 ---
 
-## 7. Hướng dẫn cài đặt và nạp firmware
+## 7. Hướng dẫn cài đặt môi trường và Nạp Firmware
 
-### Yêu cầu môi trường:
-* Cài đặt **[Visual Studio Code](https://code.visualstudio.com/)**.
-* Cài đặt Extension **[PlatformIO IDE](https://marketplace.visualstudio.com/items?itemName=platformio.platformio-ide)**.
+### Bước 1: Cài đặt phần mềm cần thiết
+1. Tải và cài đặt **[VS Code (Visual Studio Code)](https://code.visualstudio.com/)**.
+2. Trong VS Code, mở tab Extensions (`Ctrl + Shift + X`), tìm và cài đặt **PlatformIO IDE**.
+3. Cài đặt Python 3 trên máy tính (nếu muốn dùng script xem camera `viewer.py`):
+   ```bash
+   pip install opencv-python numpy pyserial
+   ```
 
-### Các bước nạp code:
-1. Mở thư mục `robot_xiaozhi` trong VS Code.
-2. Cắm mạch ESP32-S3-CAM vào máy tính qua cổng Type-C.
-3. Nhấn biểu tượng **Check (✔)** ở thanh dưới cùng để Biên dịch (Build).
-4. Nhấn biểu tượng **Mũi tên (➡)** để Nạp Firmware (Upload).
+### Bước 2: Mở dự án và Biên dịch
+1. Khởi động VS Code -> Chọn **File** -> **Open Folder...** -> Chọn thư mục `robot_xiaozhi`.
+2. Chờ PlatformIO tự động quét thư viện trong `lib/` (thấy thông báo *PlatformIO: Ready* ở thanh dưới cùng).
+3. Nhấn biểu tượng dấu **Tích (✔)** ở thanh trạng thái để biên dịch dự án.
+
+### Bước 3: Nạp Firmware vào ESP32-S3
+1. Cắm cáp USB Type-C từ máy tính vào cổng USB/UART trên mạch ESP32-S3.
+2. Nhấn biểu tượng **Mũi tên sang phải (➡)** trên thanh công cụ của PlatformIO để nạp code.
+3. Khi nạp xong, thông báo **`SUCCESS`** sẽ xuất hiện trên Terminal.
 
 ---
 
-## 8. Ứng dụng xem video trực tiếp (OpenCV Viewer)
+## 8. Hướng dẫn sử dụng Live Video Viewer trên máy tính
 
-Dự án đi kèm công cụ `viewer.py` nhận stream video thời gian thực từ ESP32-S3 qua cổng USB Serial với tốc độ cao (2.000.000 baud):
+Dự án đi kèm ứng dụng xem video mượt mà viết bằng Python & OpenCV:
 
 ### Khởi chạy:
-* **Cách 1**: Nhấp đúp vào file [`run_viewer.bat`](run_viewer.bat).
-* **Cách 2**: Chạy lệnh terminal:
+* **Cách 1**: Nhấp đúp chuột vào file [`run_viewer.bat`](run_viewer.bat).
+* **Cách 2**: Chạy qua dòng lệnh Terminal:
   ```bash
   python viewer.py
   ```
+  *(Script sẽ tự động dò tìm cổng COM của ESP32-S3 và mở luồng video 2.000.000 baud).*
 
-### Phím tắt điều khiển trên giao diện video:
-* `S`: Chụp và lưu ảnh về thư mục `captures/` trên máy tính.
-* `C`: Gửi sự kiện yêu cầu robot chụp ảnh lưu vào thẻ MicroSD gắn trên mạch.
-* `1` / `2` / `3`: Chuyển đổi nhanh độ phân giải (QVGA 320x240 / VGA 640x480 / SVGA 800x600).
-* `Q` hoặc `ESC`: Đóng chương trình xem video.
+### Phím tắt điều khiển trong cửa sổ video:
+* `S`: Chụp ảnh và lưu về thư mục `captures/` trên máy tính.
+* `C`: Gửi tín hiệu qua Serial để ESP32-S3 chụp và lưu ảnh vào thẻ nhớ MicroSD trên mạch.
+* `1`: Đổi sang độ phân giải **QVGA (320x240)** - Tốc độ khung hình cao nhất.
+* `2`: Đổi sang độ phân giải **VGA (640x480)** - Cân bằng độ nét và tốc độ (Khuyên dùng).
+* `3`: Đổi sang độ phân giải **SVGA (800x600)** - Độ nét cao.
+* `Q` hoặc `ESC`: Thoát ứng dụng.
 
 ---
 
-## 9. Xử lý sự cố thường gặp (Troubleshooting)
+## 9. Lộ trình tích hợp AI Cloud (Xiaozhi Server / OpenAI / Dify)
 
-| Sự cố | Nguyên nhân | Giải pháp |
+Kiến trúc này đã sẵn sàng để bạn tích hợp luồng đàm thoại với AI:
+1. **Kết nối WiFi**: Thêm thư viện `WiFi.h` và `WebSocketsClient` vào `lib/NetworkService`.
+2. **Truyền nhận Audio**:
+   * Khi người dùng nhấn nút chạm `TTP223` -> Bắn sự kiện `EVENT_TOUCH_PRESSED`.
+   * `AudioService` bắt đầu đọc dữ liệu PCM từ Micro `INMP441` và stream qua WebSocket lên server Xiaozhi.
+3. **Phản hồi từ AI**:
+   * Server trả về câu trả lời -> Bắn sự kiện `EVENT_AI_RESPONSE_RECEIVED`.
+   * `SystemBrain` gửi chuỗi text ra `DisplayService` (hiển thị phụ đề) và đẩy dữ liệu âm thanh ra `AudioService` (phát ra loa `MAX98357A`).
+
+---
+
+## 10. Bảng xử lý sự cố thường gặp (Troubleshooting)
+
+| Tình trạng sự cố | Nguyên nhân khả dĩ | Hướng dẫn khắc phục |
 | :--- | :--- | :--- |
-| **`Camera init failed!`** | Cáp FPC của camera gắn lỏng hoặc lệch chân. | Tháo chốt cài FPC, căn chỉnh lại cáp camera và cài chặt lại. |
-| **`CANH BAO: PSRAM khong tim thay!`** | Chọn sai loại board hoặc cấu hình OPI PSRAM chưa nhận. | Kiểm tra dòng `board_build.arduino.memory_type = qio_opi` trong `platformio.ini`. Đảm bảo mạch của bạn là bản N8R8 hoặc N16R8. |
-| **Xe không chạy hoặc tự reset khi bật motor** | Động cơ N20 ăn dòng gây sụt áp nguồn 3.3V/5V của ESP32. | Hàn tụ lọc nguồn (470uF - 1000uF) vào đường nguồn cấp cho mạch cầu H và vi điều khiển như trên sơ đồ mạch. |
+| **`Camera init failed!`** | Cáp FPC camera tiếp xúc không tốt hoặc lỏng chân. | Mở lẫy gài cáp camera trên mạch, cắm sâu đầu cáp thẳng hàng và gài chặt lại. |
+| **`CANH BAO: PSRAM khong tim thay!`** | Mạch không có PSRAM hoặc cấu hình chế độ OPI sai. | Kiểm tra mã chip (phải là `N8R8` hoặc `N16R8`). Đảm bảo file `platformio.ini` có dòng `board_build.arduino.memory_type = qio_opi`. |
+| **Xe giật hoặc tự Reset khi bật động cơ** | Động cơ N20 kéo dòng lớn gây sụt áp đường 3.3V/5V. | Hàn thêm tụ hóa `470uF - 1000uF` vào giữa chân 5V và GND của mạch như trong sơ đồ. |
+| **Màn hình OLED không sáng** | Sai địa chỉ I2C hoặc lỏng dây SDA/SCL. | Kiểm tra chân SDA (GPIO 41) và SCL (GPIO 42). Địa chỉ màn hình mặc định thường là `0x3C`. |
+| **Không in log ra cổng Type-C** | Chưa kích hoạt chế độ USB CDC trên ESP32-S3. | Mạch đã có cờ `-D ARDUINO_USB_CDC_ON_BOOT=1` trong cấu hình, đảm bảo cắm đúng cổng USB Native CDC. |
 
 ---
 
-## 📄 Giấy phép (License)
-Dự án được phát hành theo giấy phép mã nguồn mở **MIT License**.
+## 📄 Giấy phép mã nguồn (License)
+Dự án được phát hành theo giấy phép mã nguồn mở **MIT License**. Bạn có thể tự do chỉnh sửa, phát triển thương mại hoặc chia sẻ trong cộng đồng DIY Robot AI.
