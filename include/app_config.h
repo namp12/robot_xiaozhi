@@ -6,21 +6,30 @@
 // Khi bạn có linh kiện nào, chỉ cần bật 1 cho module đó.
 // Hệ thống sẽ tự động khởi chạy Task và lắng nghe Event tương ứng mà không xung đột!
 // ==============================================================================
-#define ENABLE_MODULE_CAMERA    1   // Module Camera (Đang có sẵn trên mạch ESP32-S3-CAM)
-#define ENABLE_MODULE_SD_CARD   1   // Thẻ nhớ MicroSD lưu ảnh
-#define ENABLE_MODULE_BRAIN     1   // Não bộ điều phối trung tâm (Xử lý Event Bus)
+#define ENABLE_MODULE_CAMERA          1   // Module Camera (Đang có sẵn trên mạch ESP32-S3-CAM)
+#define ENABLE_MODULE_SD_CARD         1   // Thẻ nhớ MicroSD lưu ảnh
+#define ENABLE_MODULE_BRAIN           1   // Não bộ điều phối trung tâm (Xử lý Event Bus)
+#define ENABLE_MODULE_WEB_CONTROLLER  1   // Web Controller qua WiFi (Stream MJPEG + Điều khiển từ xa)
 
 // Các module mở rộng (Bật khi bạn gắn thêm linh kiện tự chọn)
-#define ENABLE_MODULE_DISPLAY   0   // Màn hình biểu cảm (OLED SSD1306 / LCD GC9A01/ST7789)
-#define ENABLE_MODULE_MOTOR     0   // Động cơ di chuyển (L298N Mini / DRV8833 + Motor N20)
-#define ENABLE_MODULE_AUDIO     0   // Âm thanh I2S (Mic INMP441 + Loa MAX98357A)
-#define ENABLE_MODULE_SENSOR    0   // Cảm biến khoảng cách (VL53L0X) + Cảm ứng chạm (TTP223)
+#define ENABLE_MODULE_DISPLAY         0   // Màn hình biểu cảm (OLED SSD1306 / LCD GC9A01/ST7789)
+#define ENABLE_MODULE_MOTOR           0   // Động cơ di chuyển (L298N Mini / DRV8833 + Motor N20)
+#define ENABLE_MODULE_AUDIO           0   // Âm thanh I2S (Mic INMP441 + Loa MAX98357A)
+#define ENABLE_MODULE_SENSOR          0   // Cảm biến khoảng cách (VL53L0X) + Cảm ứng chạm (TTP223)
 
 // ==============================================================================
 // 2. CẤU HÌNH GIAO TIẾP & HỆ THỐNG
 // ==============================================================================
 #define SYSTEM_SERIAL_BAUD      2000000     // 2Mbaud truyền video thời gian thực siêu mượt
 #define EVENT_QUEUE_SIZE        32          // Kích thước hàng đợi sự kiện (chứa tối đa 32 sự kiện)
+
+// Cấu hình Mạng WiFi & Web Controller
+#define WIFI_AP_SSID            "Robot-Xiaozhi"
+#define WIFI_AP_PASS            "12345678"
+#define WIFI_STA_SSID           "YOUR_WIFI_SSID"      // Nhập tên WiFi nhà bạn nếu muốn kết nối Router
+#define WIFI_STA_PASS           "YOUR_WIFI_PASSWORD"  // Mật khẩu WiFi
+#define WEB_SERVER_PORT         80                    // Cổng Dashboard Web điều khiển
+#define STREAM_SERVER_PORT      81                    // Cổng MJPEG Video Stream thời gian thực
 
 // Định nghĩa nhân CPU (Core) cho từng tác vụ
 #define CORE_HEAVY_MULTIMEDIA   0           // Core 0: Camera, Audio DMA, Stream nặng

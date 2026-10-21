@@ -14,9 +14,10 @@
 5. [Hướng dẫn cấu hình Bật/Tắt module (`include/app_config.h`)](#5-hướng-dẫn-cấu-hình-bậttắt-module-includeapp_configh)
 6. [Hướng dẫn cơ chế giao tiếp Event Bus (Cách thêm tính năng mới)](#6-hướng-dẫn-cơ-chế-giao-tiếp-event-bus-cách-thêm-tính-năng-mới)
 7. [Hướng dẫn cài đặt môi trường và Nạp Firmware](#7-hướng-dẫn-cài-đặt-môi-trường-và-nạp-firmware)
-8. [Hướng dẫn sử dụng Live Video Viewer trên máy tính](#8-hướng-dẫn-sử-dụng-live-video-viewer-trên-máy-tính)
-9. [Lộ trình tích hợp AI Cloud (Xiaozhi Server / OpenAI / Dify)](#9-lộ-trình-tích-hợp-ai-cloud-xiaozhi-server--openai--dify)
-10. [Bảng xử lý sự cố thường gặp (Troubleshooting)](#10-bảng-xử-lý-sự-cố-thường-gặp-troubleshooting)
+8. [Hướng dẫn sử dụng Web Controller & Live Video Stream qua WiFi](#8-hướng-dẫn-sử-dụng-web-controller--live-video-stream-qua-wifi)
+9. [Hướng dẫn sử dụng Live Video Viewer trên máy tính (USB Serial)](#9-hướng-dẫn-sử-dụng-live-video-viewer-trên-máy-tính-usb-serial)
+10. [Lộ trình tích hợp AI Cloud (Xiaozhi Server / OpenAI / Dify)](#10-lộ-trình-tích-hợp-ai-cloud-xiaozhi-server--openai--dify)
+11. [Bảng xử lý sự cố thường gặp (Troubleshooting)](#11-bảng-xử-lý-sự-cố-thường-gặp-troubleshooting)
 
 ---
 
@@ -230,9 +231,36 @@ case EVENT_ROBOT_PICKED_UP:
 
 ---
 
-## 8. Hướng dẫn sử dụng Live Video Viewer trên máy tính
+## 8. Hướng dẫn sử dụng Web Controller & Live Video Stream qua WiFi
 
-Dự án đi kèm ứng dụng xem video mượt mà viết bằng Python & OpenCV:
+Robot Xiaozhi tích hợp sẵn **Web Controller** không dây, cho phép bạn điều khiển và xem video trực tiếp từ điện thoại hoặc máy tính mà **không cần cài đặt app**:
+
+### Kết nối mạng:
+* **Chế độ Access Point (Mặc định)**:
+  1. Dùng điện thoại hoặc máy tính kết nối vào mạng WiFi phát từ robot:
+     * **Tên WiFi (SSID)**: `Robot-Xiaozhi`
+     * **Mật khẩu**: `12345678`
+  2. Mở trình duyệt web (Chrome, Safari, Edge) và truy cập: **`http://192.168.4.1`**
+* **Chế độ Station (Kết nối Router nhà)**:
+  * Điền tên và mật khẩu WiFi của bạn vào `WIFI_STA_SSID` và `WIFI_STA_PASS` trong [`include/app_config.h`](include/app_config.h).
+  * Robot sẽ kết nối vào mạng nhà bạn và hiển thị địa chỉ IP qua Serial Monitor (ví dụ: `http://192.168.1.50`).
+
+### Các tính năng trên Web Dashboard:
+* **Khung hình Video trực tiếp**: Stream MJPEG mượt mà 25-30 FPS qua port 81 (hoặc Snapshot polling qua port 80).
+* **Phím điều khiển D-Pad (Cảm ứng & Bàn phím)**:
+  * Hỗ trợ **nhấn giữ để chạy, nhả tay để dừng** an toàn.
+  * Phím tắt bàn phím: `W` (Tiến), `S` (Lùi), `A` (Trái), `D` (Phải), `Space` (Dừng).
+* **Thanh trượt tốc độ (Speed Slider)**: Điều chỉnh tốc độ động cơ PWM từ 50 đến 255.
+* **Chụp ảnh lưu thẻ nhớ**: Nhấn nút `📷 Chụp & Lưu SD` để chụp ngay 1 frame lưu vào thẻ nhớ MicroSD.
+* **Biểu cảm khuôn mặt**: Đổi cảm xúc màn hình OLED với 5 biểu cảm: 😊 Vui vẻ, 😢 Buồn, 😲 Ngạc nhiên, 😠 Tức giận, 😐 Bình thường.
+* **Đèn trợ sáng (Lamp LED)**: Bật/tắt đèn LED ban đêm chỉ bằng 1 nút bấm.
+* **Giám sát Telemetry**: Hiển thị thời gian thực mức sóng WiFi (RSSI), bộ nhớ SRAM trống, PSRAM trống và thời gian hoạt động (Uptime).
+
+---
+
+## 9. Hướng dẫn sử dụng Live Video Viewer trên máy tính (USB Serial)
+
+Dự án đi kèm ứng dụng xem video mượt mà viết bằng Python & OpenCV qua cáp USB Type-C tốc độ cao 2.000.000 baud:
 
 ### Khởi chạy:
 * **Cách 1**: Nhấp đúp chuột vào file [`run_viewer.bat`](run_viewer.bat).
@@ -252,10 +280,10 @@ Dự án đi kèm ứng dụng xem video mượt mà viết bằng Python & Open
 
 ---
 
-## 9. Lộ trình tích hợp AI Cloud (Xiaozhi Server / OpenAI / Dify)
+## 10. Lộ trình tích hợp AI Cloud (Xiaozhi Server / OpenAI / Dify)
 
 Kiến trúc này đã sẵn sàng để bạn tích hợp luồng đàm thoại với AI:
-1. **Kết nối WiFi**: Thêm thư viện `WiFi.h` và `WebSocketsClient` vào `lib/NetworkService`.
+1. **Kết nối WiFi**: Thư viện `WebController` đã tích hợp sẵn kết nối WiFi ổn định.
 2. **Truyền nhận Audio**:
    * Khi người dùng nhấn nút chạm `TTP223` -> Bắn sự kiện `EVENT_TOUCH_PRESSED`.
    * `AudioService` bắt đầu đọc dữ liệu PCM từ Micro `INMP441` và stream qua WebSocket lên server Xiaozhi.
@@ -265,7 +293,7 @@ Kiến trúc này đã sẵn sàng để bạn tích hợp luồng đàm thoại
 
 ---
 
-## 10. Bảng xử lý sự cố thường gặp (Troubleshooting)
+## 11. Bảng xử lý sự cố thường gặp (Troubleshooting)
 
 | Tình trạng sự cố | Nguyên nhân khả dĩ | Hướng dẫn khắc phục |
 | :--- | :--- | :--- |

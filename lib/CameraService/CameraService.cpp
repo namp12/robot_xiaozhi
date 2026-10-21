@@ -14,6 +14,8 @@ static bool s_sd_card_ready = false;
 static int s_photo_counter = 0;
 static volatile bool s_capture_requested = false;
 static TaskHandle_t s_camera_task_handle = nullptr;
+static SemaphoreHandle_t s_cam_mutex = nullptr;
+static bool s_camera_ready = false;
 
 #if ENABLE_MODULE_SD_CARD
 static bool init_sd_card() {
@@ -41,6 +43,10 @@ static bool save_photo_to_sd(camera_fb_t *fb) {
 #endif
 
 bool CameraService::init() {
+    if (!s_cam_mutex) {
+        s_cam_mutex = xSemaphoreCreateMutex();
+    }
+
 #if ENABLE_MODULE_SD_CARD
     s_sd_card_ready = init_sd_card();
 #endif
@@ -80,7 +86,34 @@ bool CameraService::init() {
         config.fb_location = CAMERA_FB_IN_DRAM;
     }
 
-    return (esp_camera_init(&config) == ESP_OK);
+    s_camera_ready = (esp_camera_init(&config) == ESP_OK);
+    return s_camera_ready;
+}
+
+bool CameraService::isReady() {
+    return s_camera_ready;
+}
+
+camera_fb_t* CameraService::getFrame(uint32_t timeout_ms) {
+    if (!s_camera_ready || !s_cam_mutex) return nullptr;
+    if (xSemaphoreTake(s_cam_mutex, pdMS_TO_TICKS(timeout_ms)) == pdTRUE) {
+        camera_fb_t *fb = esp_camera_fb_get();
+        if (!fb) {
+            xSemaphoreGive(s_cam_mutex);
+            return nullptr;
+        }
+        return fb;
+    }
+    return nullptr;
+}
+
+void CameraService::returnFrame(camera_fb_t *fb) {
+    if (fb) {
+        esp_camera_fb_return(fb);
+    }
+    if (s_cam_mutex) {
+        xSemaphoreGive(s_cam_mutex);
+    }
 }
 
 void CameraService::requestCapture() {
@@ -103,7 +136,7 @@ static void camera_task_worker(void *param) {
             }
         }
 
-        camera_fb_t *fb = esp_camera_fb_get();
+        camera_fb_t *fb = CameraService::getFrame(50);
         if (!fb) {
             vTaskDelay(pdMS_TO_TICKS(10));
             continue;
@@ -122,8 +155,8 @@ static void camera_task_worker(void *param) {
             s_capture_requested = false;
         }
 
-        esp_camera_fb_return(fb);
-        vTaskDelay(pdMS_TO_TICKS(1));
+        CameraService::returnFrame(fb);
+        vTaskDelay(pdMS_TO_TICKS(15));
     }
 }
 
@@ -139,3 +172,4 @@ bool CameraService::startTask(uint8_t core_id) {
     );
     return (res == pdPASS);
 }
+

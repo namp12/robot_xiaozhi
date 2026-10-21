@@ -17,6 +17,7 @@
 #include <DisplayService.h>
 #include <AudioService.h>
 #include <SensorService.h>
+#include <WebController.h>
 
 #include <esp_log.h>
 
@@ -52,6 +53,15 @@ void setup() {
         ESP_LOGI(TAG, "CameraService running on Core %d", CORE_HEAVY_MULTIMEDIA);
     } else {
         ESP_LOGE(TAG, "CameraService init failed!");
+    }
+#endif
+
+#if ENABLE_MODULE_WEB_CONTROLLER
+    if (WebController::init()) {
+        WebController::startTask(CORE_BRAIN_AND_CONTROL);
+        ESP_LOGI(TAG, "WebController running on: http://%s", WebController::getIP().c_str());
+    } else {
+        ESP_LOGE(TAG, "WebController init failed!");
     }
 #endif
 

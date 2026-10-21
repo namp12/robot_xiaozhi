@@ -41,11 +41,43 @@ static void brain_task_worker(void *param) {
                     break;
 
                 case EVENT_MOTOR_MOVE_FORWARD:
-                    MotorDriver::forward(evt.param.i32 > 0 ? evt.param.i32 : 100);
+                    MotorDriver::forward(evt.param.i32 > 0 ? evt.param.i32 : 200);
+                    break;
+
+                case EVENT_MOTOR_MOVE_BACKWARD:
+                    MotorDriver::backward(evt.param.i32 > 0 ? evt.param.i32 : 200);
+                    break;
+
+                case EVENT_MOTOR_TURN_LEFT:
+                    MotorDriver::turnLeft(evt.param.i32 > 0 ? evt.param.i32 : 180);
+                    break;
+
+                case EVENT_MOTOR_TURN_RIGHT:
+                    MotorDriver::turnRight(evt.param.i32 > 0 ? evt.param.i32 : 180);
                     break;
 
                 case EVENT_MOTOR_STOP:
                     MotorDriver::stop();
+                    break;
+
+                case EVENT_UI_SET_EMOTION_NORMAL:
+                    DisplayService::setEmotion(EMOTION_NORMAL);
+                    break;
+
+                case EVENT_UI_SET_EMOTION_HAPPY:
+                    DisplayService::setEmotion(EMOTION_HAPPY);
+                    break;
+
+                case EVENT_UI_SET_EMOTION_SAD:
+                    DisplayService::setEmotion(EMOTION_SAD);
+                    break;
+
+                case EVENT_UI_SET_EMOTION_SURPRISED:
+                    DisplayService::setEmotion(EMOTION_SURPRISED);
+                    break;
+
+                case EVENT_UI_SET_EMOTION_ANGRY:
+                    DisplayService::setEmotion(EMOTION_ANGRY);
                     break;
 
                 default:

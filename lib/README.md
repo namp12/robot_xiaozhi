@@ -17,6 +17,7 @@ Mỗi thư mục con trong đây là một module tự đóng gói (Encapsulated
 | **[`DisplayService`](DisplayService/README.md)** | `DisplayService.h` | Hiển thị các biểu cảm mắt (Vui, Buồn, Ngạc nhiên...) trên màn hình OLED/LCD. | Core 1 |
 | **[`AudioService`](AudioService/README.md)** | `AudioService.h` | Xử lý âm thanh số I2S: thu âm từ Micro INMP441 và phát âm thanh qua Loa MAX98357A. | Core 0 |
 | **[`SensorService`](SensorService/README.md)** | `SensorService.h` | Đọc cảm biến laser khoảng cách VL53L0X (chống va chạm) và nút cảm ứng chạm TTP223. | Core 1 |
+| **[`WebController`](WebController/README.md)** | `WebController.h` | Dashboard điều khiển Robot qua Web WiFi và MJPEG Video Streamer thời gian thực. | Cả 2 Core |
 
 ---
 
